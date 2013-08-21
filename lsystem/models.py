@@ -4,11 +4,13 @@ import pygame
 import random
 
 from django.db import models
+from django.db import transaction
 
 from .managers import TreeManager
 
 ALPHABET = (
 	('X', 'X'), # no movement
+	('Y', 'Y'),
 	('F', 'F'), # move forward
 	('[', '['), # save current state
 	(']', ']'), # load state
@@ -193,6 +195,7 @@ class Tree(TimeStampedModel):
 		self.save()
 		return self.form
 
+	@transaction.commit_on_success
 	def build(self, start):
 		angle = -1.0 * self.theta
 		if self.root:
@@ -200,6 +203,7 @@ class Tree(TimeStampedModel):
 		builder = TreeBuilder(self.form, angle, self.move, start)
 		self.root = builder.build()
 		self.save()
+		return 1
 
 	def draw(self, screen):
 		self.root.draw(screen)
@@ -254,6 +258,7 @@ class TreeBuilder(object):
 	def __action(self, char):
 		return {
 			'X': self.__nothing,
+			'Y': self.__nothing,
 			'F': self.__move,
 			'[': self.__push,
 			']': self.__pop,

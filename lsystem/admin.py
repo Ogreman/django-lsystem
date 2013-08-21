@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Axiom, Tree, Rule, TreeRule
+from .models import Axiom, Tree, Rule, TreeRule, Branch
 
 
 
@@ -38,3 +38,4 @@ class TreeAdmin(admin.ModelAdmin):
 admin.site.register(Axiom)
 admin.site.register(Tree, TreeAdmin)
 admin.site.register(Rule)
+admin.site.register(Branch)

@@ -49,6 +49,11 @@ class Branch(models.Model):
 			)
 		)
 
+	def delete(self, *args, **kwargs):
+		for child in self.children.all():
+			child.delete()
+		super(Branch, self).delete(*args, **kwargs)
+
 	def draw(self, screen):
 		colour = [int(i) for i in self.colour.split(',')]
 		pygame.draw.aaline(
@@ -162,7 +167,9 @@ class Tree(TimeStampedModel):
 	"""
 	label = models.CharField(blank=True, max_length=255)
 	start = models.ForeignKey('Axiom')
-	root = models.ForeignKey('Branch', blank=True, null=True)
+	root = models.ForeignKey(
+		'Branch', blank=True, null=True, on_delete=models.SET_NULL
+	)
 	generation = models.PositiveIntegerField(default=0)
 	form = models.TextField(blank=True)
 	tree_rules = models.ManyToManyField('Rule', through='TreeRule')
@@ -188,6 +195,8 @@ class Tree(TimeStampedModel):
 
 	def build(self, start):
 		angle = -1.0 * self.theta
+		if self.root:
+			self.root.delete()
 		builder = TreeBuilder(self.form, angle, self.move, start)
 		self.root = builder.build()
 		self.save()
@@ -262,7 +271,7 @@ class TreeBuilder(object):
 		return self.__turn(-1.0 * self.theta)
 
 	def __move(self):
-		# print "Moving..."
+		print "Moving..."
 		componentX = math.cos(self.angle * TORADS) * self.distance
 		componentY = math.sin(self.angle * TORADS) * -1.0 * self.distance
 		newX = componentX + self.x
@@ -273,7 +282,7 @@ class TreeBuilder(object):
 			length=self.distance, angle=self.angle
 		)
 		branch.save()
-		# print "{0}".format(branch) ### DEBUG
+		print "{0}".format(branch)
 		self.lines.append(branch)
 		if self.root == None:
 			self.root = branch
@@ -285,7 +294,7 @@ class TreeBuilder(object):
 		return 1
 
 	def __push(self):
-		# print "Pushing..."
+		print "Pushing..."
 		self.stack.append((
 			self.current,
 			self.angle
@@ -293,7 +302,7 @@ class TreeBuilder(object):
 		return 1
 
 	def __pop(self):
-		# print "Popping..."
+		print "Popping..."
 		data = self.stack.pop()
 		self.current = data[0]
 		self.x = self.current.endX
@@ -302,7 +311,7 @@ class TreeBuilder(object):
 		return 1
 
 	def __turn(self, theta):
-		# print "Turning by {0}...".format(theta)
+		print "Turning by {0}...".format(theta)
 		self.angle += theta
-		# print "Angle now: {0}".format(self.angle)
+		print "Angle now: {0}".format(self.angle)
 		return 1

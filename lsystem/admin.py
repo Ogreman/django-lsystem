@@ -7,6 +7,7 @@ from .models import Axiom, Tree, Rule, TreeRule, Branch
 WIDTH = 800
 HEIGHT = 640
 BLACK = (0,0,0)
+BLUE = (10, 80, 150)
 
 def grow(modeladmin, request, queryset):
     """
@@ -48,7 +49,7 @@ def draw(modeladmin, request, queryset):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit(); return;
-        screen.fill(BLACK)
+        screen.fill(BLUE)
         for tree in queryset:
             if tree.root is not None:
                 tree.draw(screen)

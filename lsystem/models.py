@@ -18,6 +18,8 @@ ALPHABET = (
 	('-', '-'), # rotate anticlockwise
 )
 TORADS = 0.01745
+GREEN = "80,200,80"
+BROWN = "150,120,120"
 
 class Branch(models.Model):
 	"""
@@ -34,7 +36,7 @@ class Branch(models.Model):
 	length = models.PositiveIntegerField()
 	angle = models.FloatField()
 
-	colour = models.CharField(max_length=12, default="255,255,255")
+	colour = models.CharField(max_length=12, default=GREEN)
 
 	children = models.ManyToManyField(
 		"self", symmetrical=False, related_name="parent"
@@ -284,7 +286,8 @@ class TreeBuilder(object):
 		branch = Branch(
 			startX=self.x, startY=self.y,
 			endX=newX, endY=newY,
-			length=self.distance, angle=self.angle
+			length=self.distance, angle=self.angle,
+			colour=(BROWN if self.angle == 90.0 else GREEN),
 		)
 		branch.save()
 		print "{0}".format(branch)

@@ -5,7 +5,6 @@ Prototype python implementation of a Lindenmayer system that uses Django as a ba
 
 Very much a WIP and not intended for serious use.
 
-(c) 2013 James Cox
 
 Example tree:
 -------------

@@ -21,6 +21,21 @@ def grow(modeladmin, request, queryset):
     modeladmin.message_user(request, "%s successfully grown." % count_bit)
 
 
+def build(modeladmin, request, queryset):
+    """
+    Builds a tree
+    """
+    for i, tree in enumerate(queryset):
+        w = (WIDTH / (queryset.count() + 1)) * (i + 1)
+        tree.build((w, 630.0))
+    rows_updated = queryset.count()
+    if rows_updated == 1:
+        count_bit = "1 tree was"
+    else:
+        count_bit = "%s trees were" % rows_updated
+    modeladmin.message_user(request, "%s successfully built." % count_bit)
+
+
 def draw(modeladmin, request, queryset):
     """
     Displays a tree using pygame
@@ -52,7 +67,7 @@ class TreeRuleInline(admin.StackedInline):
     )
 
 class TreeAdmin(admin.ModelAdmin):
-	actions = [grow,draw,]
+	actions = [grow,draw,build,]
 	inlines = (TreeRuleInline,)
 	model = Tree
 

@@ -227,7 +227,7 @@ class TreeBuilder(object):
 		self.string = string    # string to convert
 		self.stack = [] 		# push / pop (b, angle)
 		self.current = None 	# current branch
-		self.angle = 0.0		# vector angle
+		self.angle = 90.0		# vector angle
 		self.x = start[0] 		# current x pos
 		self.y = start[1]		# current y pos
 		self.startX = self.x 	# starting x pos
@@ -244,13 +244,16 @@ class TreeBuilder(object):
 
 	def __action(self, char):
 		return {
-			'X': 0,
+			'X': self.__nothing,
 			'F': self.__move,
 			'[': self.__push,
 			']': self.__pop,
 			'+': self.__cturn,
 			'-': self.__aturn,
 		}[char]()
+
+	def __nothing(self):
+		return 0
 
 	def __cturn(self):
 		return self.__turn(self.theta)

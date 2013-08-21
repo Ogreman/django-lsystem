@@ -1,7 +1,7 @@
 django-lsystem
 ==============
 
-Prototype python implementation of a Lindenmayer system that uses Django as a backend for storing generated data.
+Prototype python implementation of a [Lindenmayer system](https://en.wikipedia.org/wiki/L-system) that uses Django as a backend for storing generated data.
 
 Very much a WIP and not intended for serious use.
 

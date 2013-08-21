@@ -1,5 +1,6 @@
 import re
 import math
+import pygame
 import random
 
 from django.db import models
@@ -31,12 +32,32 @@ class Branch(models.Model):
 	length = models.PositiveIntegerField()
 	angle = models.FloatField()
 
+	colour = models.CharField(max_length=12, default="255,255,255")
+
 	children = models.ManyToManyField(
 		"self", symmetrical=False, related_name="parent"
 	)
 
 	class Meta:
 		verbose_name_plural = "branches"
+
+	def __unicode__(self):
+		return unicode(
+			"({0}, {1}), ({2}, {3})".format(
+				self.startX, self.startY,
+				self.endX, self.endY
+			)
+		)
+
+	def draw(self, screen):
+		colour = [int(i) for i in self.colour.split(',')]
+		pygame.draw.aaline(
+			screen, colour,
+			(self.startX, self.startY),
+			(self.endX, self.endY)
+		)
+		for child in self.children.all():
+			child.draw(screen)
 
 
 class TimeStampedModel(models.Model):
@@ -166,9 +187,13 @@ class Tree(TimeStampedModel):
 		return self.form
 
 	def build(self, start):
-		builder = TreeBuilder(self.form, self.theta, self.move, start)
+		angle = -1.0 * self.theta
+		builder = TreeBuilder(self.form, angle, self.move, start)
 		self.root = builder.build()
 		self.save()
+
+	def draw(self, screen):
+		self.root.draw(screen)
 
 
 class TreeRule(models.Model):
@@ -200,20 +225,19 @@ class TreeBuilder(object):
 
 	def __init__(self, string, angle, length, start):
 		self.string = string    # string to convert
-		self.stack = [] 		# used for push / pop
+		self.stack = [] 		# push / pop (b, angle)
 		self.current = None 	# current branch
-		self.angle = angle 		# global angle for tree
+		self.angle = 0.0		# vector angle
 		self.x = start[0] 		# current x pos
 		self.y = start[1]		# current y pos
 		self.startX = self.x 	# starting x pos
 		self.startY = self.y 	# starting y pos
+		self.theta = angle 		# global angle
 		self.root = None		# root branch of tree
 		self.lines = []			# collection of branches
 		self.distance = length 	# global length of branches
 
 	def build(self):
-		start = (self.startX, self.startY)
-		self.__init__(self.string, self.angle, self.distance, start)
 		for i, c in enumerate(self.string):
 			self.__action(c)
 		return self.root
@@ -221,14 +245,21 @@ class TreeBuilder(object):
 	def __action(self, char):
 		return {
 			'X': 0,
-			'F': self.__move(),
-			'[': self.__push(),
-			']': self.__pop(),
-			'+': self.__turn(self.angle),
-			'-': self.__turn(-1.0 * self.angle),
-		}[char]
+			'F': self.__move,
+			'[': self.__push,
+			']': self.__pop,
+			'+': self.__cturn,
+			'-': self.__aturn,
+		}[char]()
+
+	def __cturn(self):
+		return self.__turn(self.theta)
+
+	def __aturn(self):
+		return self.__turn(-1.0 * self.theta)
 
 	def __move(self):
+		# print "Moving..."
 		componentX = math.cos(self.angle * TORADS) * self.distance
 		componentY = math.sin(self.angle * TORADS) * -1.0 * self.distance
 		newX = componentX + self.x
@@ -239,6 +270,7 @@ class TreeBuilder(object):
 			length=self.distance, angle=self.angle
 		)
 		branch.save()
+		# print "{0}".format(branch) ### DEBUG
 		self.lines.append(branch)
 		if self.root == None:
 			self.root = branch
@@ -250,10 +282,24 @@ class TreeBuilder(object):
 		return 1
 
 	def __push(self):
-		pass
+		# print "Pushing..."
+		self.stack.append((
+			self.current,
+			self.angle
+		))
+		return 1
 
 	def __pop(self):
-		pass
+		# print "Popping..."
+		data = self.stack.pop()
+		self.current = data[0]
+		self.x = self.current.endX
+		self.y = self.current.endY
+		self.angle = data[1]
+		return 1
 
-	def __turn(self, angle):
-		pass
+	def __turn(self, theta):
+		# print "Turning by {0}...".format(theta)
+		self.angle += theta
+		# print "Angle now: {0}".format(self.angle)
+		return 1

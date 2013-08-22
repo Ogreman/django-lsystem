@@ -120,12 +120,15 @@ class Rule(models.Model):
 	Extends the Rule model by adding a probability of
 	occurence that the start will be replaced.
 	"""
-	probability = models.PositiveIntegerField(blank=True, null=True)
+	probability_start = models.PositiveIntegerField(blank=True)
+	probability_end = models.PositiveIntegerField(blank=True)
 
 	def __unicode__(self):
 		left = self.left_of_start + ':' if self.left_of_start else ''
 		right = ':' + self.right_of_start if self.right_of_start else ''
-		front = '{0}% '.format(self.probability) if self.probability else ''
+		front = '{0}% '.format(
+			self.probability_end - self.probability_start
+		) if self.probability_end else ''
 		return unicode (
 			front + left + self.start + right + ' -> ' + self.result
 		)
@@ -143,13 +146,14 @@ class Rule(models.Model):
 			matches = re.finditer(start, string)
 			results = [ m.start() + 1 if self.left_of_start else m.start()
 		 		for m in matches ]
+	 		return results
  		return []
 
-	def do_replace(self, string):
+	def do_replace(self, string, rand):
 		slist = list(string)
 		for i in self.__find_all(string):
-			if self.probability:
-				if (random.random() * 100) <= self.probability:
+			if self.probability_end:
+				if (self.probability_start <= rand <= self.probability_end):
 					slist[i] = self.result
 			else:
 			 	slist[i] = self.result
@@ -215,10 +219,10 @@ class Tree(TimeStampedModel):
 
 		if self.generation is 0:
 			self.form = self.start.seed
-
+		rand = random.random() * 100
 		# pass initial form to each rule to handle replacing
 		for tr in self.rules.all().select_related():
-			self.form = tr.rule.do_replace(str(self.form))
+			self.form = tr.rule.do_replace(str(self.form), rand)
 
 		if self.form == old_form:
 			raise TreeError, "Tree {0} did not grow.".format(self.label)

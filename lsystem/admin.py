@@ -95,9 +95,42 @@ class TreeRuleInline(admin.StackedInline):
     )
 
 class TreeAdmin(admin.ModelAdmin):
-	actions = [grow,draw,build,reset_tree,]
-	inlines = (TreeRuleInline,)
-	model = Tree
+    actions = [grow,draw,build,reset_tree,]
+    inlines = (TreeRuleInline,)
+    model = Tree
+    readonly_fields = (
+        "created",
+        "modified",
+        "root",
+        "generation",
+        "form",
+    )
+
+    fieldsets = (
+        (None,
+            { 'fields': (
+                "label",
+                "start",
+                "generation",
+                )
+            }
+        ),
+        ("Details",
+            { 'fields': (
+                "move",
+                "theta",
+                "created",
+                "modified",
+                )
+            }
+        ),
+        ("Form",
+            { 'fields': (
+                "form",
+                )
+            }
+        ),
+    )
 
 admin.site.register(Axiom)
 admin.site.register(Tree, TreeAdmin)

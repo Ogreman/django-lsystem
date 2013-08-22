@@ -132,11 +132,18 @@ class Rule(models.Model):
 
 	def __find_all(self, string):
 		"""
-		Returns a list of string positions of occurences of start.
+		Returns a list of string positions of occurences
+		of substring start.
+
+		TODO: match #ignore
+		example: (X...X...X)
 		"""
 		start = self.left_of_start + self.start + self.right_of_start
-		return [ m.start() + 1 if self.left_of_start else m.start()
-		 	for m in re.finditer(start, string) ]
+		if start in string:
+			matches = re.finditer(start, string)
+			results = [ m.start() + 1 if self.left_of_start else m.start()
+		 		for m in matches ]
+ 		return []
 
 	def do_replace(self, string):
 		slist = list(string)
@@ -204,12 +211,17 @@ class Tree(TimeStampedModel):
 		return self
 
 	def grow(self):
+		old_form = self.form
+
 		if self.generation is 0:
 			self.form = self.start.seed
 
 		# pass initial form to each rule to handle replacing
 		for tr in self.rules.all().select_related():
 			self.form = tr.rule.do_replace(str(self.form))
+
+		if self.form == old_form:
+			raise TreeError, "Tree {0} did not grow.".format(self.label)
 
 		self.generation = self.generation + 1
 		self.save()

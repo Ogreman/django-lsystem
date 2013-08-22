@@ -209,6 +209,9 @@ class Tree(TimeStampedModel):
 		return unicode(self.id)
 
 	def init(self):
+		if self.branches == '':
+			raise TreeError, "Tree {0} has no branches".format(self.label)
+
 		# loads branch data from db
 		branch_ids = self.branches.split(',')
 		self._branches = Branch.objects.filter(id__in=branch_ids)

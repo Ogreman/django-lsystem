@@ -104,7 +104,13 @@ class TreeAdmin(admin.ModelAdmin):
         "root",
         "generation",
         "form",
+        "branch_count"
     )
+
+    def branch_count(self, obj):
+        return len(obj.branches)
+    branch_count.short_description = "Branches"
+    branch_count.allow_tags = True
 
     fieldsets = (
         (None,
@@ -127,6 +133,7 @@ class TreeAdmin(admin.ModelAdmin):
         ("Form",
             { 'fields': (
                 "form",
+                "branch_count",
                 )
             }
         ),

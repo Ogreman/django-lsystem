@@ -86,7 +86,7 @@ class TimeStampedModel(models.Model):
         abstract = True
 
 
-class Rule(TimeStampedModel):
+class Rule(models.Model):
 	"""
 	A rule defines the replacements that may
 	occur within an L-System.

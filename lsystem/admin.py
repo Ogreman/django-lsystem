@@ -23,13 +23,28 @@ def grow(modeladmin, request, queryset):
     modeladmin.message_user(request, "%s successfully grown." % count_bit)
 
 
+def reset_tree(modeladmin, request, queryset):
+    """
+    Resets a tree
+    """
+    for tree in queryset:
+        tree.reset()
+    rows_updated = queryset.count()
+    if rows_updated == 1:
+        count_bit = "1 tree was"
+    else:
+        count_bit = "%s trees were" % rows_updated
+    modeladmin.message_user(request, "%s successfully reset." % count_bit)
+
+
+
 def build(modeladmin, request, queryset):
     """
     Builds a tree
     """
     for i, tree in enumerate(queryset):
         w = (WIDTH / (queryset.count() + 1)) * (i + 1)
-        tree.build((w, 630.0))
+        tree.build((w, 640.0))
     rows_updated = queryset.count()
     if rows_updated == 1:
         count_bit = "1 tree was"
@@ -43,17 +58,22 @@ def draw(modeladmin, request, queryset):
     Displays a tree using pygame
     """
     pygame.init()
+    clock = pygame.time.Clock()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     modeladmin.message_user(request, "Successfully drew trees to screen.")
+    actors = []
+    for tree in queryset:
+        actors.append(tree.init())
     while True:
+        elapsed = clock.tick(30)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit(); return;
         screen.fill(BLUE)
-        for tree in queryset:
-            if tree.root is not None:
-                tree.draw(screen)
+        for tree in actors:
+            tree.draw(screen)
         pygame.display.update()
+
 
 
 class TreeRuleInline(admin.StackedInline):
@@ -70,7 +90,7 @@ class TreeRuleInline(admin.StackedInline):
     )
 
 class TreeAdmin(admin.ModelAdmin):
-	actions = [grow,draw,build,]
+	actions = [grow,draw,build,reset_tree,]
 	inlines = (TreeRuleInline,)
 	model = Tree
 

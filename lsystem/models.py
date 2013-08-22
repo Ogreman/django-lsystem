@@ -2,6 +2,8 @@ import re
 import math
 import pygame
 import random
+from datetime import datetime
+
 
 from django.db import models
 from django.db import transaction
@@ -20,6 +22,9 @@ ALPHABET = (
 TORADS = 0.01745
 GREEN = "80,200,80"
 BROWN = "150,120,120"
+
+class TreeError(Exception):
+	pass
 
 class Branch(models.Model):
 	"""
@@ -58,16 +63,31 @@ class Branch(models.Model):
 			child.delete()
 		super(Branch, self).delete(*args, **kwargs)
 
-	def draw(self, screen):
-		colour = [int(i) for i in self.colour.split(',')]
+	def draw(self, screen, colour=None):
+		# colour = [int(i) for i in self.colour.split(',')]
 		pygame.draw.aaline(
-			screen, colour,
+			screen, (80,200,80),
 			(self.startX, self.startY),
 			(self.endX, self.endY)
 		)
-		for child in self.children.all():
-			child.draw(screen)
+		# for child in self.children.all():
+		# 	child.draw(screen, colour)
 
+	# @transaction.commit_on_success
+	# def move(self, distance, start=None):
+	# 	if start:
+	# 		self.startX = start[0]
+	# 		self.startY = start[1]
+	# 	componentX = math.cos(self.angle * TORADS) * distance
+	# 	componentY = math.sin(self.angle * TORADS) * -1.0 * distance
+	# 	newX = componentX + self.endX
+	# 	newY = componentY + self.endY
+	# 	self.endX = newX
+	# 	self.endY = newY
+	# 	distance *= 0.9
+	# 	for child in self.children.all():
+	# 		child.move(distance, (newX, newY))
+	# 	self.save()
 
 class TimeStampedModel(models.Model):
     """
@@ -126,6 +146,9 @@ class Rule(TimeStampedModel):
 		)
 
 	def __find_all(self, string):
+		"""
+		Returns a list of string positions of occurences of start.
+		"""
 		start = self.left_of_start + self.start + self.right_of_start
 		return [ m.start() + 1 if self.left_of_start else m.start()
 		 	for m in re.finditer(start, string) ]
@@ -179,6 +202,7 @@ class Tree(TimeStampedModel):
 	tree_rules = models.ManyToManyField('Rule', through='TreeRule')
 	theta = models.FloatField()
 	move = models.FloatField()
+	branches = models.TextField(blank=True)
 
 	objects = TreeManager()
 
@@ -188,27 +212,70 @@ class Tree(TimeStampedModel):
 			return unicode(self.label)
 		return unicode(self.id)
 
+	def init(self):
+		# loads branch data from db
+		branch_ids = self.branches.split(',')
+		self._branches = Branch.objects.filter(id__in=branch_ids)
+		return self
+
 	def grow(self):
 		if self.generation is 0:
 			self.form = self.start.seed
+
+		# pass initial form to each rule to handle replacing
 		for tr in self.rules.all().select_related():
 			self.form = tr.rule.do_replace(str(self.form))
+
 		self.generation = self.generation + 1
 		self.save()
 		return self.form
 
 	@transaction.commit_on_success
 	def build(self, start):
+		tstart = datetime.now()
+
+		# negative for clockwise turns on +
 		angle = -1.0 * self.theta
+
+		# delete all previously generated branches
 		if self.root:
 			self.root.delete()
+
+		# create and delegate build to a helper class
 		builder = TreeBuilder(self.form, angle, self.move, start)
-		self.root = builder.build()
+
+		# stores branches as a comma-separated string of ids
+		data = builder.build()
+		self.root = data['root']
+		self.branches = ','.join([str(b.id) for b in data['branches']])
 		self.save()
 		return 1
 
 	def draw(self, screen):
-		self.root.draw(screen)
+
+		if not hasattr(self, '_branches'):
+			raise TreeError, "Requires initialisation - self.init()"
+
+		# each branch draws itself given a surface
+		tstart = datetime.now()
+		for branch in self._branches:
+			branch.draw(screen)
+		time = datetime.now() - tstart
+
+		# DEBUG / render time
+		print "Draw took {0}.{1} seconds" .format(
+			time.seconds,
+			time.microseconds / 1000
+		)
+
+	def reset(self):
+		# delete all previously generated branches
+		if self.root:
+			self.root.delete()
+			self.root = None
+		self.form = ''
+		self.generation = 0
+		self.save()
 
 
 class TreeRule(models.Model):
@@ -253,11 +320,22 @@ class TreeBuilder(object):
 		self.distance = length 	# global length of branches
 
 	def build(self):
-		for i, c in enumerate(self.string):
+		print "Building from {0} characters.".format(len(self.string))
+		for c in self.string:
 			self.__action(c)
-		return self.root
+		print "Created {0} branches.".format(len(self.lines))
+		return {
+			'root': self.root,
+			'branches': self.lines,
+		}
 
 	def __action(self, char):
+		"""
+		python hack to associate character
+		to turtle command.
+		Raises KeyError on not found.
+		Acts like a switch statement.
+		"""
 		return {
 			'X': self.__nothing,
 			'Y': self.__nothing,
@@ -278,7 +356,6 @@ class TreeBuilder(object):
 		return self.__turn(-1.0 * self.theta)
 
 	def __move(self):
-		print "Moving..."
 		componentX = math.cos(self.angle * TORADS) * self.distance
 		componentY = math.sin(self.angle * TORADS) * -1.0 * self.distance
 		newX = componentX + self.x
@@ -290,7 +367,6 @@ class TreeBuilder(object):
 			colour=(BROWN if self.angle == 90.0 else GREEN),
 		)
 		branch.save()
-		print "{0}".format(branch)
 		self.lines.append(branch)
 		if self.root == None:
 			self.root = branch
@@ -302,7 +378,6 @@ class TreeBuilder(object):
 		return 1
 
 	def __push(self):
-		print "Pushing..."
 		self.stack.append((
 			self.current,
 			self.angle
@@ -310,7 +385,6 @@ class TreeBuilder(object):
 		return 1
 
 	def __pop(self):
-		print "Popping..."
 		data = self.stack.pop()
 		self.current = data[0]
 		self.x = self.current.endX
@@ -319,7 +393,5 @@ class TreeBuilder(object):
 		return 1
 
 	def __turn(self, theta):
-		print "Turning by {0}...".format(theta)
 		self.angle += theta
-		print "Angle now: {0}".format(self.angle)
 		return 1

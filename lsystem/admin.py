@@ -41,10 +41,12 @@ def reset_tree(modeladmin, request, queryset):
 def build(modeladmin, request, queryset):
     """
     Builds a tree
+
+    TODO: build in world space around (0,0)
     """
     for i, tree in enumerate(queryset):
         w = (WIDTH / (queryset.count() + 1)) * (i + 1)
-        tree.build((w, 640.0))
+        tree.build((w, 635.0))
     rows_updated = queryset.count()
     if rows_updated == 1:
         count_bit = "1 tree was"
@@ -56,6 +58,8 @@ def build(modeladmin, request, queryset):
 def draw(modeladmin, request, queryset):
     """
     Displays a tree using pygame
+
+    TODO: transpose from model to view space.
     """
     pygame.init()
     clock = pygame.time.Clock()
@@ -70,6 +74,7 @@ def draw(modeladmin, request, queryset):
             if event.type == pygame.QUIT:
                 pygame.quit(); return;
         screen.fill(BLUE)
+        pygame.draw.line(screen, [0, 100, 0], [0, 630], [800, 630], 20)
         for tree in actors:
             tree.draw(screen)
         pygame.display.update()

@@ -23,8 +23,10 @@ TORADS = 0.01745
 GREEN = "80,200,80"
 BROWN = "150,120,120"
 
+
 class TreeError(Exception):
 	pass
+
 
 class Branch(models.Model):
 	"""
@@ -64,30 +66,13 @@ class Branch(models.Model):
 		super(Branch, self).delete(*args, **kwargs)
 
 	def draw(self, screen, colour=None):
-		# colour = [int(i) for i in self.colour.split(',')]
+		colour = [int(i) for i in self.colour.split(',')]
 		pygame.draw.aaline(
-			screen, (80,200,80),
+			screen, colour,
 			(self.startX, self.startY),
 			(self.endX, self.endY)
 		)
-		# for child in self.children.all():
-		# 	child.draw(screen, colour)
 
-	# @transaction.commit_on_success
-	# def move(self, distance, start=None):
-	# 	if start:
-	# 		self.startX = start[0]
-	# 		self.startY = start[1]
-	# 	componentX = math.cos(self.angle * TORADS) * distance
-	# 	componentY = math.sin(self.angle * TORADS) * -1.0 * distance
-	# 	newX = componentX + self.endX
-	# 	newY = componentY + self.endY
-	# 	self.endX = newX
-	# 	self.endY = newY
-	# 	distance *= 0.9
-	# 	for child in self.children.all():
-	# 		child.move(distance, (newX, newY))
-	# 	self.save()
 
 class TimeStampedModel(models.Model):
     """
@@ -269,7 +254,6 @@ class Tree(TimeStampedModel):
 		)
 
 	def reset(self):
-		# delete all previously generated branches
 		if self.root:
 			self.root.delete()
 			self.root = None

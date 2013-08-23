@@ -33,6 +33,7 @@ class Branch(models.Model):
 	terms of a line and its corresponding
 	child branches.
 	"""
+
 	startX = models.FloatField()
 	startY = models.FloatField()
 
@@ -51,7 +52,6 @@ class Branch(models.Model):
 	class Meta:
 		verbose_name_plural = "branches"
 
-
 	def __unicode__(self):
 		return unicode(
 			"({0}, {1}), ({2}, {3})".format(
@@ -61,7 +61,9 @@ class Branch(models.Model):
 		)
 
 	def init(self):
-		self._children = self.children.all().values_list('id', flat=True)
+		self._children = []
+		self._children = list(self.children.all())
+		return self
 
 	def draw(self, screen, position, colour=None):
 		colour = [int(i) for i in self.colour.split(',')]
@@ -71,12 +73,25 @@ class Branch(models.Model):
 			(self.endX + position[0], self.endY + position[1])
 		)
 
+	def rotate(self, angle):
+		self.angle += angle
+		rads = self.angle * TORADS
+		self.endX = self.startX + math.cos(rads) * self.length
+		self.endY = self.startY	+ math.sin(rads) * -1.0 * self.length
+		if hasattr(self, '_children'):
+			for child in self._children:
+				child.startX = self.endX
+				child.startY = self.endY
+				child.rotate(angle)
+
+
 
 class TimeStampedModel(models.Model):
     """
 	An abstract base class model that provides self-
 	updating ''created'' and ''modified'' fields.
 	"""
+
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
 
@@ -177,9 +192,8 @@ class Axiom(TimeStampedModel):
 	of an L-System, from which a tree is grown.
 
 	An axiom is defined as a single character.
-
-	Each axiom has a unique id field.
 	"""
+
 	seed = models.CharField(max_length=1, choices=ALPHABET)
 
 	def __unicode__(self):
@@ -198,6 +212,7 @@ class Tree(TimeStampedModel):
 	generation from the axiom as well as its
 	resulting string.
 	"""
+
 	label = models.CharField(blank=True, max_length=255)
 	start = models.ForeignKey('Axiom')
 	root = models.ForeignKey(
@@ -232,11 +247,10 @@ class Tree(TimeStampedModel):
 
 		# loads branch data from db
 		branch_ids = self.branches.split(',')
-		self._branches = Branch.objects.filter(id__in=branch_ids)
-
-		for branch in self._branches:
+		self._branches = [
 			branch.init()
-
+			for branch in Branch.objects.filter(id__in=branch_ids)
+		]
 		return self
 
 	def grow(self):
@@ -302,6 +316,11 @@ class Tree(TimeStampedModel):
 		self.form = ''
 		self.generation = 0
 		self.save()
+
+	def rotate(self, angle):
+		self.root.rotate(angle)
+		return self
+
 
 
 class TreeRule(models.Model):

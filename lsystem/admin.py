@@ -82,6 +82,7 @@ def draw(modeladmin, request, queryset):
             20                      # width
         )
         for i, tree in enumerate(actors):
+            # tree=tree.rotate(20)
             position = (tree_spacing * (i + 1), tree_base)
             tree.draw(screen, position)
         pygame.display.update()

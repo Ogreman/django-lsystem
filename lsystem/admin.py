@@ -42,8 +42,6 @@ def reset_tree(modeladmin, request, queryset):
 def build(modeladmin, request, queryset):
     """
     Builds a tree
-
-    TODO: build in world space around (0,0)
     """
     for tree in queryset:
         tree.build()
@@ -58,8 +56,6 @@ def build(modeladmin, request, queryset):
 def draw(modeladmin, request, queryset):
     """
     Displays a tree using pygame
-
-    TODO: transpose from model to view space.
     """
     pygame.init()
     clock = pygame.time.Clock()

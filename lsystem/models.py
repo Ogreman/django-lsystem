@@ -4,7 +4,6 @@ import pygame
 import random
 from datetime import datetime
 
-
 from django.db import models
 from django.db import transaction
 
@@ -90,6 +89,8 @@ class Rule(models.Model):
 	"""
 	A rule defines the replacements that may
 	occur within an L-System.
+
+	Handles all the string replacement functionality.
 
 	Rules generally take the form:
 	    a -> b
@@ -219,6 +220,10 @@ class Tree(TimeStampedModel):
 		return unicode(self.id)
 
 	def init(self):
+		"""
+		Loads branches from database into memory.
+		This readies the tree for simulation.
+		"""
 		if self.branches == '':
 			raise TreeError, "Tree {0} has no branches".format(self.label)
 
@@ -245,7 +250,7 @@ class Tree(TimeStampedModel):
 		return self.form
 
 	@transaction.commit_on_success
-	def build(self, start=(0.0, 0.0)):
+	def build(self):
 		tstart = datetime.now()
 
 		# negative for clockwise turns on +
@@ -256,7 +261,7 @@ class Tree(TimeStampedModel):
 			self.root.delete()
 
 		# create and delegate build to a helper class
-		builder = TreeBuilder(self.form, angle, self.move, start)
+		builder = TreeBuilder(self.form, angle, self.move)
 
 		# stores branches as a comma-separated string of ids
 		data = builder.build()
@@ -318,7 +323,7 @@ class TreeBuilder(object):
 	Used to create all branches in tree and return root.
 	"""
 
-	def __init__(self, string, angle, length, start):
+	def __init__(self, string, angle, length, start=(0.0, 0.0)):
 		self.string = string    # string to convert
 		self.stack = [] 		# push / pop (b, angle)
 		self.current = None 	# current branch

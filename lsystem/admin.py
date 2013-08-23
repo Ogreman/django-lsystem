@@ -4,6 +4,7 @@ import sys
 from django.contrib import admin
 from .models import Axiom, Tree, Rule, TreeRule, Branch
 
+
 WIDTH = 800
 HEIGHT = 640
 BLACK = (0,0,0)
@@ -44,9 +45,8 @@ def build(modeladmin, request, queryset):
 
     TODO: build in world space around (0,0)
     """
-    for i, tree in enumerate(queryset):
-        w = (WIDTH / (queryset.count() + 1)) * (i + 1)
-        tree.build((w, 635.0))
+    for tree in queryset:
+        tree.build()
     rows_updated = queryset.count()
     if rows_updated == 1:
         count_bit = "1 tree was"
@@ -65,18 +65,22 @@ def draw(modeladmin, request, queryset):
     clock = pygame.time.Clock()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     modeladmin.message_user(request, "Successfully drew trees to screen.")
-    actors = []
-    for tree in queryset:
-        actors.append(tree.init())
+
+    actors = [tree.init() for tree in queryset]
+    num_actors = len(actors)
+    tree_spacing = (WIDTH / (num_actors + 1))
+    tree_base = 635.0
+
     while True:
-        elapsed = clock.tick(30)
+        elapsed = clock.tick(5)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit(); return;
         screen.fill(BLUE)
         pygame.draw.line(screen, [0, 100, 0], [0, 630], [800, 630], 20)
-        for tree in actors:
-            tree.draw(screen)
+        for i, tree in enumerate(actors):
+            position = (tree_spacing * (i + 1), tree_base)
+            tree.draw(screen, position)
         pygame.display.update()
 
 

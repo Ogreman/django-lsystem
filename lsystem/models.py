@@ -65,12 +65,12 @@ class Branch(models.Model):
 			child.delete()
 		super(Branch, self).delete(*args, **kwargs)
 
-	def draw(self, screen, colour=None):
+	def draw(self, screen, position, colour=None):
 		colour = [int(i) for i in self.colour.split(',')]
 		pygame.draw.aaline(
 			screen, colour,
-			(self.startX, self.startY),
-			(self.endX, self.endY)
+			(self.startX + position[0], self.startY + position[1]),
+			(self.endX + position[0], self.endY + position[1])
 		)
 
 
@@ -108,13 +108,18 @@ class Rule(models.Model):
 	start = models.CharField(max_length=1, choices=ALPHABET)
 	result = models.CharField(max_length=255)
 
-	# Context sensitive fields
+	"""
+	Extension adding context sensitive fields
+	"""
 	left_of_start = models.CharField(
 		max_length=1, blank=True, choices=ALPHABET
 	)
 	right_of_start = models.CharField(
 		max_length=1, blank=True, choices=ALPHABET
 	)
+	# ignore = models.CharField(
+	#	max_length=10, blank=True
+	#)
 
 	"""
 	Extends the Rule model by adding a probability of
@@ -122,6 +127,7 @@ class Rule(models.Model):
 	"""
 	probability_start = models.PositiveIntegerField(blank=True)
 	probability_end = models.PositiveIntegerField(blank=True)
+
 
 	def __unicode__(self):
 		left = self.left_of_start + ':' if self.left_of_start else ''
@@ -144,8 +150,12 @@ class Rule(models.Model):
 		start = self.left_of_start + self.start + self.right_of_start
 		if start in string:
 			matches = re.finditer(start, string)
-			results = [ m.start() + 1 if self.left_of_start else m.start()
-		 		for m in matches ]
+			results = [
+				m.start() + 1
+				if self.left_of_start
+				else m.start()
+				for m in matches
+	 		]
 	 		return results
  		return []
 
@@ -235,7 +245,7 @@ class Tree(TimeStampedModel):
 		return self.form
 
 	@transaction.commit_on_success
-	def build(self, start):
+	def build(self, start=(0.0, 0.0)):
 		tstart = datetime.now()
 
 		# negative for clockwise turns on +
@@ -255,7 +265,7 @@ class Tree(TimeStampedModel):
 		self.save()
 		return 1
 
-	def draw(self, screen):
+	def draw(self, screen, position):
 
 		if not hasattr(self, '_branches'):
 			raise TreeError, "Requires initialisation - self.init()"
@@ -263,7 +273,7 @@ class Tree(TimeStampedModel):
 		# each branch draws itself given a surface
 		tstart = datetime.now()
 		for branch in self._branches:
-			branch.draw(screen)
+			branch.draw(screen, position)
 		time = datetime.now() - tstart
 
 		# DEBUG / render time

@@ -51,6 +51,7 @@ class Branch(models.Model):
 	class Meta:
 		verbose_name_plural = "branches"
 
+
 	def __unicode__(self):
 		return unicode(
 			"({0}, {1}), ({2}, {3})".format(
@@ -58,6 +59,9 @@ class Branch(models.Model):
 				self.endX, self.endY
 			)
 		)
+
+	def init(self):
+		self._children = self.children.all().values_list('id', flat=True)
 
 	def draw(self, screen, position, colour=None):
 		colour = [int(i) for i in self.colour.split(',')]
@@ -214,6 +218,10 @@ class Tree(TimeStampedModel):
 			return unicode(self.label)
 		return unicode(self.id)
 
+	def _rules(self):
+		for rule in self.rules.all().select_related():
+			yield rule.rule
+
 	def init(self):
 		"""
 		Loads branches from database into memory.
@@ -225,12 +233,11 @@ class Tree(TimeStampedModel):
 		# loads branch data from db
 		branch_ids = self.branches.split(',')
 		self._branches = Branch.objects.filter(id__in=branch_ids)
+
+		for branch in self._branches:
+			branch.init()
+
 		return self
-
-	def _rules(self):
-		for rule in self.rules.all().select_related():
-			yield rule.rule
-
 
 	def grow(self):
 		old_form = self.form
@@ -253,15 +260,13 @@ class Tree(TimeStampedModel):
 	def build(self):
 		tstart = datetime.now()
 
-		# negative for clockwise turns on +
-		angle = -1.0 * self.theta
 
 		# delete all previously generated branches
 		if self.root:
 			self.root.delete()
 
 		# create and delegate build to a helper class
-		builder = TreeBuilder(self.form, angle, self.move)
+		builder = TreeBuilder(self.form, self.theta, self.move)
 
 		# stores branches as a comma-separated string of ids
 		data = builder.build()
@@ -284,7 +289,7 @@ class Tree(TimeStampedModel):
 		# DEBUG / render time
 		print "Draw took {0}.{1} seconds" .format(
 			time.seconds,
-			time.microseconds / 1000
+			time.microseconds
 		)
 
 	def reset(self):
@@ -363,20 +368,23 @@ class TreeBuilder(object):
 			'F': self.__move,
 			'[': self.__push,
 			']': self.__pop,
-			'+': self.__cturn,
-			'-': self.__aturn,
+			'+': self.__aturn,
+			'-': self.__cturn,
 		}[char]()
 
 	def __nothing(self):
 		return 0
 
 	def __cturn(self):
-		return self.__turn(self.theta)
-
-	def __aturn(self):
 		return self.__turn(-1.0 * self.theta)
 
+	def __aturn(self):
+		return self.__turn(self.theta)
+
 	def __move(self):
+		"""
+		NB: |-> 0 degrees; ^ 90 degrees, etc.
+		"""
 		componentX = math.cos(self.angle * TORADS) * self.distance
 		componentY = math.sin(self.angle * TORADS) * -1.0 * self.distance
 		newX = componentX + self.x

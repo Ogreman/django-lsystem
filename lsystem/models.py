@@ -59,11 +59,6 @@ class Branch(models.Model):
 			)
 		)
 
-	def delete(self, *args, **kwargs):
-		for child in self.children.all():
-			child.delete()
-		super(Branch, self).delete(*args, **kwargs)
-
 	def draw(self, screen, position, colour=None):
 		colour = [int(i) for i in self.colour.split(',')]
 		pygame.draw.aaline(
@@ -232,6 +227,11 @@ class Tree(TimeStampedModel):
 		self._branches = Branch.objects.filter(id__in=branch_ids)
 		return self
 
+	def _rules(self):
+		for rule in self.rules.all().select_related():
+			yield rule.rule
+
+
 	def grow(self):
 		old_form = self.form
 
@@ -239,8 +239,8 @@ class Tree(TimeStampedModel):
 			self.form = self.start.seed
 		rand = random.random() * 100
 		# pass initial form to each rule to handle replacing
-		for tr in self.rules.all().select_related():
-			self.form = tr.rule.do_replace(str(self.form), rand)
+		for rule in self._rules():
+			self.form = rule.do_replace(str(self.form), rand)
 
 		if self.form == old_form:
 			raise TreeError, "Tree {0} did not grow.".format(self.label)
@@ -289,8 +289,11 @@ class Tree(TimeStampedModel):
 
 	def reset(self):
 		if self.root:
-			self.root.delete()
-			self.root = None
+			branch_ids = self.branches.split(',')
+			print "Deleting {0} branches".format(len(branch_ids))
+			Branch.objects.filter(id__in=branch_ids).delete()
+		self.root = None
+		self.branches = ''
 		self.form = ''
 		self.generation = 0
 		self.save()

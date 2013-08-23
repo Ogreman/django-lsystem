@@ -9,6 +9,7 @@ WIDTH = 800
 HEIGHT = 640
 BLACK = (0,0,0)
 BLUE = (10, 80, 150)
+GREEN = (0, 100, 0)
 
 def grow(modeladmin, request, queryset):
     """
@@ -65,7 +66,7 @@ def draw(modeladmin, request, queryset):
     actors = [tree.init() for tree in queryset]
     num_actors = len(actors)
     tree_spacing = (WIDTH / (num_actors + 1))
-    tree_base = 635.0
+    tree_base = HEIGHT - 5
 
     while True:
         elapsed = clock.tick(5)
@@ -73,7 +74,13 @@ def draw(modeladmin, request, queryset):
             if event.type == pygame.QUIT:
                 pygame.quit(); return;
         screen.fill(BLUE)
-        pygame.draw.line(screen, [0, 100, 0], [0, 630], [800, 630], 20)
+        pygame.draw.line(
+            screen,                 # surface
+            GREEN,                  # colour
+            [0, HEIGHT - 10],       # start_pos
+            [WIDTH, HEIGHT - 10],   # end_pos
+            20                      # width
+        )
         for i, tree in enumerate(actors):
             position = (tree_spacing * (i + 1), tree_base)
             tree.draw(screen, position)

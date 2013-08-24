@@ -16,7 +16,7 @@ def grow(modeladmin, request, queryset):
     Grows a tree
 	"""
     for tree in queryset:
-    	tree.grow()
+    	tree.grow_sequential()
 	rows_updated = queryset.count()
     if rows_updated == 1:
         count_bit = "1 tree was"
@@ -58,18 +58,21 @@ def draw(modeladmin, request, queryset):
     """
     Displays a tree using pygame
     """
+    print "Loading..."
     pygame.init()
     clock = pygame.time.Clock()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    print "Display set to {0} x {1}".format(WIDTH, HEIGHT)
     modeladmin.message_user(request, "Successfully drew trees to screen.")
 
     actors = [tree.init() for tree in queryset]
     num_actors = len(actors)
+    print "Loaded {0} trees".format(num_actors)
     tree_spacing = (WIDTH / (num_actors + 1))
     tree_base = HEIGHT - 5
 
     while True:
-        elapsed = clock.tick(5)
+        elapsed = clock.tick(1)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit(); return;

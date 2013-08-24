@@ -41,6 +41,7 @@ class Branch(models.Model):
 	endY = models.FloatField()
 
 	length = models.PositiveIntegerField()
+	thickness = models.PositiveIntegerField()
 	angle = models.FloatField()
 
 	colour = models.CharField(max_length=12, default=GREEN)
@@ -67,10 +68,11 @@ class Branch(models.Model):
 
 	def draw(self, screen, position, colour=None):
 		colour = [int(i) for i in self.colour.split(',')]
-		pygame.draw.aaline(
+		pygame.draw.line(
 			screen, colour,
 			(self.startX + position[0], self.startY + position[1]),
-			(self.endX + position[0], self.endY + position[1])
+			(self.endX + position[0], self.endY + position[1]),
+			self.thickness
 		)
 
 	def rotate(self, angle):
@@ -141,10 +143,10 @@ class Rule(models.Model):
 	occurence that the start will be replaced.
 	"""
 	probability_start = models.PositiveIntegerField(
-		blank=True, null=True
+		default=0
 	)
 	probability_end = models.PositiveIntegerField(
-		blank=True, null=True
+		default=100
 	)
 
 
@@ -258,14 +260,25 @@ class Tree(TimeStampedModel):
 			raise TreeError, "Tree {0} has no branches".format(self.label)
 
 		# loads branch data from db
+		tstart = datetime.now()
 		branch_ids = self.branches.split(',')
 		self._branches = [
 			branch.init()
 			for branch in Branch.objects.filter(id__in=branch_ids)
 		]
+		time = datetime.now() - tstart
+
+		print "Tree {0} initialised with {1} branches in {2} seconds.".format(
+			str(self), len(self._branches),
+			time.total_seconds()
+		)
 		return self
 
 	def grow_sequential(self):
+		"""
+		Growth function that checks each character
+		sequentially. For comparison purposes.
+		"""
 		old_form = self.form
 
 		if self.generation is 0:
@@ -274,23 +287,21 @@ class Tree(TimeStampedModel):
 		# sequential character rewriting algorithm
 		tstart = datetime.now()
 		form = list(self.form)
+		rules = { r.start: r for r in self.tree_rules.all() }
 		for i, char in enumerate(form):
-			rand = random.random() * 100
 			try:
-				rule = self.rules.get(
-					rule__start__exact=char, 
-					rule__probability_start__lte=rand,
-					rule__probability_end__gte=rand 
-				)
-				form[i] = rule.rule.result
-			except TreeRule.DoesNotExist: pass
+				rule = rules[char]
+				rand = random.random() * 100
+				if rule.probability_start <= rand <= rule.probability_end:
+					form[i] = rule.result
+			except KeyError:
+				pass
 		self.form = ''.join(form)
 		time = datetime.now() - tstart
 
 		# DEBUG / grow time
-		print "Sequential Grow took {0}.{1} seconds" .format(
-			time.seconds,
-			time.microseconds
+		print "Sequential Grow took {0} seconds" .format(
+			time.total_seconds()
 		)
 
 		if self.form == old_form:
@@ -315,9 +326,8 @@ class Tree(TimeStampedModel):
 		time = datetime.now() - tstart
 
 		# DEBUG / grow time
-		print "Grow took {0}.{1} seconds" .format(
-			time.seconds,
-			time.microseconds
+		print "Grow took {0} seconds" .format(
+			time.total_seconds()
 		)
 
 		if self.form == old_form:
@@ -333,6 +343,8 @@ class Tree(TimeStampedModel):
 		if self.root:
 			self.root.delete()
 
+		tstart = datetime.now()
+
 		# create and delegate build to a helper class
 		builder = TreeBuilder(self.form, self.theta, self.move)
 
@@ -341,6 +353,14 @@ class Tree(TimeStampedModel):
 		self.root = data['root']
 		self.branches = ','.join([str(b.id) for b in data['branches']])
 		self.save()
+
+		time = datetime.now() - tstart
+
+		# DEBUG / grow time
+		print "Build took {0} seconds" .format(
+			time.total_seconds()
+		)
+
 		return 1
 
 	def draw(self, screen, position):
@@ -355,9 +375,8 @@ class Tree(TimeStampedModel):
 		time = datetime.now() - tstart
 
 		# DEBUG / render time
-		print "Draw took {0}.{1} seconds" .format(
-			time.seconds,
-			time.microseconds
+		print "Draw took {0} seconds" .format(
+			time.total_seconds()
 		)
 
 	def reset(self):
@@ -417,6 +436,7 @@ class TreeBuilder(object):
 		self.root = None		# root branch of tree
 		self.lines = []			# collection of branches
 		self.distance = length 	# global length of branches
+		self.thickness = 1 		# starting thickness
 
 	def build(self):
 		print "Building from {0} characters.".format(len(self.string))
@@ -467,6 +487,7 @@ class TreeBuilder(object):
 			endX=newX, endY=newY,
 			length=self.distance, angle=self.angle,
 			colour=(BROWN if self.angle == 90.0 else GREEN),
+			thickness=self.thickness
 		)
 		branch.save()
 		self.lines.append(branch)
@@ -482,7 +503,8 @@ class TreeBuilder(object):
 	def __push(self):
 		self.stack.append((
 			self.current,
-			self.angle
+			self.angle,
+			self.thickness
 		))
 		return 1
 
@@ -492,8 +514,12 @@ class TreeBuilder(object):
 		self.x = self.current.endX
 		self.y = self.current.endY
 		self.angle = data[1]
+		self.thickness =data[2]
 		return 1
 
 	def __turn(self, theta):
+		self.thickness -= 2
+		if self.thickness < 0:
+			self.thickness = 1
 		self.angle += theta
 		return 1

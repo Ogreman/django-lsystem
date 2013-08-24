@@ -1,5 +1,7 @@
 import pygame
 import sys
+from datetime import datetime
+
 
 from django.contrib import admin
 from .models import Axiom, Tree, Rule, TreeRule, Branch
@@ -58,13 +60,17 @@ def draw(modeladmin, request, queryset):
     """
     Displays a tree using pygame
     """
-    print "Loading..."
     pygame.init()
     clock = pygame.time.Clock()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     print "Display set to {0} x {1}".format(WIDTH, HEIGHT)
     modeladmin.message_user(request, "Successfully drew trees to screen.")
+    loading_image = "media/loading.jpg"
+    img = pygame.image.load(loading_image)
+    screen.blit(img, (0,0))
+    pygame.display.flip()
 
+    print "Loading..."
     actors = [tree.init() for tree in queryset]
     num_actors = len(actors)
     print "Loaded {0} trees".format(num_actors)
@@ -72,7 +78,7 @@ def draw(modeladmin, request, queryset):
     tree_base = HEIGHT - 5
 
     while True:
-        elapsed = clock.tick(1)
+        elapsed = clock.tick(40)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit(); return;
@@ -84,10 +90,12 @@ def draw(modeladmin, request, queryset):
             [WIDTH, HEIGHT - 10],   # end_pos
             20                      # width
         )
+
+        # each branch draws itself given a surface
         for i, tree in enumerate(actors):
             # tree=tree.rotate(20)
             position = (tree_spacing * (i + 1), tree_base)
-            tree.draw(screen, position)
+            tree.draw(screen, position)        
         pygame.display.update()
 
 

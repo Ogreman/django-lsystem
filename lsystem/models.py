@@ -300,8 +300,8 @@ class Tree(TimeStampedModel):
 		time = datetime.now() - tstart
 
 		# DEBUG / grow time
-		print "Sequential Grow took {0} seconds" .format(
-			time.total_seconds()
+		print "Sequential Grow for {0} took {1} seconds" .format(
+			str(self), time.total_seconds()
 		)
 
 		if self.form == old_form:
@@ -326,8 +326,8 @@ class Tree(TimeStampedModel):
 		time = datetime.now() - tstart
 
 		# DEBUG / grow time
-		print "Grow took {0} seconds" .format(
-			time.total_seconds()
+		print "Grow for {0} took {1} seconds" .format(
+			str(self), time.total_seconds()
 		)
 
 		if self.form == old_form:
@@ -357,8 +357,8 @@ class Tree(TimeStampedModel):
 		time = datetime.now() - tstart
 
 		# DEBUG / grow time
-		print "Build took {0} seconds" .format(
-			time.total_seconds()
+		print "Building {0} took {1} seconds" .format(
+			str(self), time.total_seconds()
 		)
 
 		return 1
@@ -366,7 +366,7 @@ class Tree(TimeStampedModel):
 	def draw(self, screen, position):
 
 		if not hasattr(self, '_branches'):
-			raise TreeError, "Requires initialisation - self.init()"
+			raise TreeError, "{0} requires initialisation - self.init()".format(str(self))
 
 		# each branch draws itself given a surface
 		tstart = datetime.now()
@@ -375,8 +375,8 @@ class Tree(TimeStampedModel):
 		time = datetime.now() - tstart
 
 		# DEBUG / render time
-		print "Draw took {0} seconds" .format(
-			time.total_seconds()
+		print "Rendering {0} took {1} seconds" .format(
+			str(self), time.total_seconds()
 		)
 
 	def reset(self):

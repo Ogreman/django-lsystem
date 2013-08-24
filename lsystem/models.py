@@ -140,8 +140,12 @@ class Rule(models.Model):
 	Extends the Rule model by adding a probability of
 	occurence that the start will be replaced.
 	"""
-	probability_start = models.PositiveIntegerField(blank=True)
-	probability_end = models.PositiveIntegerField(blank=True)
+	probability_start = models.PositiveIntegerField(
+		blank=True, null=True
+	)
+	probability_end = models.PositiveIntegerField(
+		blank=True, null=True
+	)
 
 
 	def __unicode__(self):
@@ -154,35 +158,43 @@ class Rule(models.Model):
 			front + left + self.start + right + ' -> ' + self.result
 		)
 
-	def __find_all(self, string):
+	def __find_all(self, string, thing):
 		"""
-		Returns a list of string positions of occurences
+		Generator function that returns a list
+		of string positions of occurences
 		of substring start.
 
 		TODO: match #ignore
 		example: (X...X...X)
 		"""
-		start = self.left_of_start + self.start + self.right_of_start
-		if start in string:
-			matches = re.finditer(start, string)
-			results = [
-				m.start() + 1
-				if self.left_of_start
-				else m.start()
-				for m in matches
-	 		]
-	 		return results
- 		return []
-
-	def do_replace(self, string, rand):
-		slist = list(string)
-		for i in self.__find_all(string):
-			if self.probability_end:
-				if (self.probability_start <= rand <= self.probability_end):
-					slist[i] = self.result
+		for match in re.finditer(thing, string):
+			if self.left_of_start:
+				yield match.start() + 1
 			else:
-			 	slist[i] = self.result
-		return ''.join(slist)
+				yield match.start()
+
+	def do_replace_all(self, string, rand):
+		"""
+		Primary rewriting function.
+
+		Takes the current form of the string and 
+		iterates over finding all occurences of 
+		the required start element and  replaces with 
+		the production result.
+
+		Handles stochastic implementation with random 
+		number generation (sequentially).
+		"""
+		
+		start = self.left_of_start + self.start + self.right_of_start		
+		if self.probability_end:			
+			if (self.probability_start <= rand <= self.probability_end):
+				slist = list(string)			
+				for i in self.__find_all(string, start):
+					slist[i] = self.result
+				return ''.join(slist)
+			return string
+		return string.replace(start, self.result)
 
 
 
@@ -253,15 +265,60 @@ class Tree(TimeStampedModel):
 		]
 		return self
 
+	def grow_sequential(self):
+		old_form = self.form
+
+		if self.generation is 0:
+			self.form = self.start.seed
+		
+		# sequential character rewriting algorithm
+		tstart = datetime.now()
+		form = list(self.form)
+		for i, char in enumerate(form):
+			rand = random.random() * 100
+			try:
+				rule = self.rules.get(
+					rule__start__exact=char, 
+					rule__probability_start__lte=rand,
+					rule__probability_end__gte=rand 
+				)
+				form[i] = rule.rule.result
+			except TreeRule.DoesNotExist: pass
+		self.form = ''.join(form)
+		time = datetime.now() - tstart
+
+		# DEBUG / grow time
+		print "Sequential Grow took {0}.{1} seconds" .format(
+			time.seconds,
+			time.microseconds
+		)
+
+		if self.form == old_form:
+			raise TreeError, "Tree {0} did not grow.".format(self.label)
+
+		self.generation = self.generation + 1
+		self.save()
+		return self.form
+
+
 	def grow(self):
 		old_form = self.form
 
 		if self.generation is 0:
 			self.form = self.start.seed
 		rand = random.random() * 100
+		
 		# pass initial form to each rule to handle replacing
+		tstart = datetime.now()
 		for rule in self._rules():
-			self.form = rule.do_replace(str(self.form), rand)
+			self.form = rule.do_replace_all(str(self.form), rand)
+		time = datetime.now() - tstart
+
+		# DEBUG / grow time
+		print "Grow took {0}.{1} seconds" .format(
+			time.seconds,
+			time.microseconds
+		)
 
 		if self.form == old_form:
 			raise TreeError, "Tree {0} did not grow.".format(self.label)
@@ -272,9 +329,6 @@ class Tree(TimeStampedModel):
 
 	@transaction.commit_on_success
 	def build(self):
-		tstart = datetime.now()
-
-
 		# delete all previously generated branches
 		if self.root:
 			self.root.delete()

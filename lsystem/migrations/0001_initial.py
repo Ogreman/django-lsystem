@@ -17,6 +17,7 @@ class Migration(SchemaMigration):
             ('endY', self.gf('django.db.models.fields.FloatField')()),
             ('length', self.gf('django.db.models.fields.PositiveIntegerField')()),
             ('angle', self.gf('django.db.models.fields.FloatField')()),
+            ('colour', self.gf('django.db.models.fields.CharField')(default='80,200,80', max_length=12)),
         ))
         db.send_create_signal(u'lsystem', ['Branch'])
 
@@ -32,13 +33,12 @@ class Migration(SchemaMigration):
         # Adding model 'Rule'
         db.create_table(u'lsystem_rule', (
             (u'id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
-            ('created', self.gf('django.db.models.fields.DateTimeField')(auto_now_add=True, blank=True)),
-            ('modified', self.gf('django.db.models.fields.DateTimeField')(auto_now=True, blank=True)),
             ('start', self.gf('django.db.models.fields.CharField')(max_length=1)),
             ('result', self.gf('django.db.models.fields.CharField')(max_length=255)),
             ('left_of_start', self.gf('django.db.models.fields.CharField')(max_length=1, blank=True)),
             ('right_of_start', self.gf('django.db.models.fields.CharField')(max_length=1, blank=True)),
-            ('probability', self.gf('django.db.models.fields.PositiveIntegerField')(null=True, blank=True)),
+            ('probability_start', self.gf('django.db.models.fields.PositiveIntegerField')(blank=True)),
+            ('probability_end', self.gf('django.db.models.fields.PositiveIntegerField')(blank=True)),
         ))
         db.send_create_signal(u'lsystem', ['Rule'])
 
@@ -58,11 +58,12 @@ class Migration(SchemaMigration):
             ('modified', self.gf('django.db.models.fields.DateTimeField')(auto_now=True, blank=True)),
             ('label', self.gf('django.db.models.fields.CharField')(max_length=255, blank=True)),
             ('start', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['lsystem.Axiom'])),
-            ('root', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['lsystem.Branch'], null=True, blank=True)),
+            ('root', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['lsystem.Branch'], null=True, on_delete=models.SET_NULL, blank=True)),
             ('generation', self.gf('django.db.models.fields.PositiveIntegerField')(default=0)),
             ('form', self.gf('django.db.models.fields.TextField')(blank=True)),
             ('theta', self.gf('django.db.models.fields.FloatField')()),
             ('move', self.gf('django.db.models.fields.FloatField')()),
+            ('branches', self.gf('django.db.models.fields.TextField')(blank=True)),
         ))
         db.send_create_signal(u'lsystem', ['Tree'])
 
@@ -108,6 +109,7 @@ class Migration(SchemaMigration):
             'Meta': {'object_name': 'Branch'},
             'angle': ('django.db.models.fields.FloatField', [], {}),
             'children': ('django.db.models.fields.related.ManyToManyField', [], {'related_name': "'parent'", 'symmetrical': 'False', 'to': u"orm['lsystem.Branch']"}),
+            'colour': ('django.db.models.fields.CharField', [], {'default': "'80,200,80'", 'max_length': '12'}),
             'endX': ('django.db.models.fields.FloatField', [], {}),
             'endY': ('django.db.models.fields.FloatField', [], {}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
@@ -117,17 +119,17 @@ class Migration(SchemaMigration):
         },
         u'lsystem.rule': {
             'Meta': {'object_name': 'Rule'},
-            'created': ('django.db.models.fields.DateTimeField', [], {'auto_now_add': 'True', 'blank': 'True'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'left_of_start': ('django.db.models.fields.CharField', [], {'max_length': '1', 'blank': 'True'}),
-            'modified': ('django.db.models.fields.DateTimeField', [], {'auto_now': 'True', 'blank': 'True'}),
-            'probability': ('django.db.models.fields.PositiveIntegerField', [], {'null': 'True', 'blank': 'True'}),
+            'probability_end': ('django.db.models.fields.PositiveIntegerField', [], {'blank': 'True'}),
+            'probability_start': ('django.db.models.fields.PositiveIntegerField', [], {'blank': 'True'}),
             'result': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
             'right_of_start': ('django.db.models.fields.CharField', [], {'max_length': '1', 'blank': 'True'}),
             'start': ('django.db.models.fields.CharField', [], {'max_length': '1'})
         },
         u'lsystem.tree': {
             'Meta': {'object_name': 'Tree'},
+            'branches': ('django.db.models.fields.TextField', [], {'blank': 'True'}),
             'created': ('django.db.models.fields.DateTimeField', [], {'auto_now_add': 'True', 'blank': 'True'}),
             'form': ('django.db.models.fields.TextField', [], {'blank': 'True'}),
             'generation': ('django.db.models.fields.PositiveIntegerField', [], {'default': '0'}),
@@ -135,7 +137,7 @@ class Migration(SchemaMigration):
             'label': ('django.db.models.fields.CharField', [], {'max_length': '255', 'blank': 'True'}),
             'modified': ('django.db.models.fields.DateTimeField', [], {'auto_now': 'True', 'blank': 'True'}),
             'move': ('django.db.models.fields.FloatField', [], {}),
-            'root': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['lsystem.Branch']", 'null': 'True', 'blank': 'True'}),
+            'root': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['lsystem.Branch']", 'null': 'True', 'on_delete': 'models.SET_NULL', 'blank': 'True'}),
             'start': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['lsystem.Axiom']"}),
             'theta': ('django.db.models.fields.FloatField', [], {}),
             'tree_rules': ('django.db.models.fields.related.ManyToManyField', [], {'to': u"orm['lsystem.Rule']", 'through': u"orm['lsystem.TreeRule']", 'symmetrical': 'False'})

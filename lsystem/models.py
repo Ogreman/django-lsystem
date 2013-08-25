@@ -191,10 +191,12 @@ class Rule(models.Model):
 		start = self.left_of_start + self.start + self.right_of_start		
 		if self.probability_end:			
 			if (self.probability_start <= rand <= self.probability_end):
-				slist = list(string)			
-				for i in self.__find_all(string, start):
-					slist[i] = self.result
-				return ''.join(slist)
+				if self.left_of_start:
+					slist = list(string)			
+					for i in self.__find_all(string, start):
+						slist[i] = self.result
+					return ''.join(slist)
+				return string.replace(start, self.result)
 			return string
 		return string.replace(start, self.result)
 
@@ -487,7 +489,7 @@ class TreeBuilder(object):
 			endX=newX, endY=newY,
 			length=self.distance, angle=self.angle,
 			colour=(BROWN if self.angle == 90.0 else GREEN),
-			thickness=self.thickness
+			thickness=self.thickness,
 		)
 		branch.save()
 		self.lines.append(branch)
@@ -504,7 +506,7 @@ class TreeBuilder(object):
 		self.stack.append((
 			self.current,
 			self.angle,
-			self.thickness
+			self.thickness,
 		))
 		return 1
 
@@ -514,7 +516,7 @@ class TreeBuilder(object):
 		self.x = self.current.endX
 		self.y = self.current.endY
 		self.angle = data[1]
-		self.thickness =data[2]
+		self.thickness = data[2]
 		return 1
 
 	def __turn(self, theta):
